@@ -8,6 +8,8 @@ from torch.autograd.variable import Variable
 from torchvision import transforms, datasets, utils
 from torch.utils.data import Dataset, DataLoader
 
+import numpy as np
+
 class ToTensor(object):
     """Convert ndarrays in sample to Tensors."""
 
@@ -47,6 +49,88 @@ class DataSet(Dataset):
 
     def get_columns(self):
         return self.data.columns
+
+
+
+class DataSetGRG(Dataset):
+    """Face Landmarks dataset."""
+
+    def __init__(self, csv_file, root_dir, transform=transforms.Compose([ToTensor()]), training_porcentage=0.7, shuffle_db=False):
+        """
+        Args:
+            csv_file (string): Path to the csv file with annotations.
+            root_dir (string): Directory with all the images.
+            transform (callable, optional): Optional transform to be applied
+                on a sample.
+        """
+        # self.data = pd.read_csv(csv_file).head(100000)
+        self.file = pd.read_csv(csv_file)
+        if (shuffle):
+            self.file = shuffle(self.file)
+        self.data = self.file.head(int(self.file.shape[0]))
+        # self.test_data = self.file.tail(int(self.file.shape[0]*(1-training_porcentage)))
+        self.test_data = None
+        self.root_dir = root_dir
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        item = self.data.iloc[idx]
+        if self.transform:
+            item = self.transform(item)
+        return item
+
+    def get_columns(self):
+        return self.data.columns
+
+
+class DataSetGRGHeart(Dataset):
+    """Face Landmarks dataset."""
+
+    def __init__(self, csv_file, root_dir, transform=transforms.Compose([ToTensor()]), training_porcentage=0.7, shuffle_db=False):
+        """
+        Args:
+            csv_file (string): Path to the csv file with annotations.
+            root_dir (string): Directory with all the images.
+            transform (callable, optional): Optional transform to be applied
+                on a sample.
+        """
+        # self.data = pd.read_csv(csv_file).head(100000)
+        self.file = pd.read_csv(csv_file)
+        if (shuffle):
+            self.file = shuffle(self.file)
+        # self.data = self.file.head(int(self.file.shape[0]))
+
+        data = self.file.to_numpy()
+        
+        data = data.astype(np.float32)
+
+        data[:, :-1] = (data[:, :-1] - data[:, :-1].min(0))/(data[:, :-1].max() - data[:, :-1].min(0))
+        print(f"Data stats  (min, max) = {data.min(0), data.max(0)}")
+
+        print(f"Labels unique vals = {np.unique(data[:,-1]).tolist()}")
+        assert np.unique(data[:,-1]).tolist() == [0,1], "Error! Class labels changed."
+        
+        self.data = pd.DataFrame(data)
+        # self.test_data = self.file.tail(int(self.file.shape[0]*(1-training_porcentage)))
+        self.test_data = None
+        self.root_dir = root_dir
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        item = self.data.iloc[idx]
+        if self.transform:
+            item = self.transform(item)
+        return item
+
+    def get_columns(self):
+        return self.data.columns
+
 
 class DataAtts():
     def __init__(self, file_name):
@@ -93,6 +177,41 @@ class DataAtts():
             self.values_names = {0: "No Frauds", 1: "Frauds"}
             self.class_len = 31
             self.fname="creditcard_1s_escalonated"
+
+
+        
+        elif "grg_data/diabetes" in file_name:
+            self.message="Pima Indians Diabetes Database"
+            self.class_name = "Outcome"
+            self.values_names = {0: "Normal", 1: "Diabets"}
+            self.class_len = 9
+            self.fname="diabetes"
+
+        
+        elif "grg_data/heart" in file_name:
+            self.message="Heart Disease Database"
+            self.class_name = "Outcome"
+            self.values_names = {0: "Normal", 1: "HearDisease"}
+            self.class_len = 14
+            self.fname="heart"
+
+        
+        elif "grg_higgs_small" in file_name:
+            self.message="Higgs Small Database"
+            self.class_name = "Outcome"
+            self.values_names = {0: "Normal", 1: "Higgs"}
+            self.class_len = 29
+            self.fname="higgs-small"
+
+        
+        elif "grg_credit_card" in file_name:
+            self.message="Credit Card Database"
+            self.class_name = "Outcome"
+            self.values_names = {0: "Normal", 1: "Fraud"}
+            self.class_len = 31
+            self.fname="credit-card-fraud"
+
+
         else:
             print("File not found, exiting")
             exit(1)
